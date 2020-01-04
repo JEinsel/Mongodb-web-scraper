@@ -6,7 +6,12 @@ var cheerio = require("cheerio");
 
 var db = require("./models");
 
-var PORT = 3000;
+var PORT = process.env.PORT || 8080;
+
+var MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost/mongoHeadlines";
+
+mongoose.connect(MONGODB_URI);
+
 
 var app = express();
 
@@ -19,11 +24,11 @@ app.use(express.static("public"));
 mongoose.connect("mongodb://localhost/ArticleScraper", { useNewUrlParser: true });
 
 
-app.get("/scrape", function(req, res) {
-  axios.get("https://www.foxnews.com/opinion").then(function(response) {
+app.get("/scrape", function (req, res) {
+  axios.get("https://www.foxnews.com/opinion").then(function (response) {
     var $ = cheerio.load(response.data);
 
-    $("article h4").each(function(i, element) {
+    $("article h4").each(function (i, element) {
       var result = {};
 
       result.title = $(this)
@@ -34,10 +39,10 @@ app.get("/scrape", function(req, res) {
         .attr("href");
 
       db.Article.create(result)
-        .then(function(dbArticle) {
+        .then(function (dbArticle) {
           console.log(dbArticle);
         })
-        .catch(function(err) {
+        .catch(function (err) {
           console.log(err);
         });
     });
@@ -45,39 +50,39 @@ app.get("/scrape", function(req, res) {
   });
 });
 
-app.get("/articles", function(req, res) {
+app.get("/articles", function (req, res) {
   db.Article.find({})
-    .then(function(dbArticle) {
+    .then(function (dbArticle) {
       res.json(dbArticle);
     })
-    .catch(function(err) {
+    .catch(function (err) {
       res.json(err);
     });
 });
 
-app.get("/articles/:id", function(req, res) {
+app.get("/articles/:id", function (req, res) {
   db.Article.findOne({ _id: req.params.id })
     .populate("comment")
-    .then(function(dbArticle) {
+    .then(function (dbArticle) {
       res.json(dbArticle);
     })
-    .catch(function(err) {
+    .catch(function (err) {
       res.json(err);
     });
 });
 
-app.post("/articles/:id", function(req, res) {
+app.post("/articles/:id", function (req, res) {
   db.Comment.create(req.body)
-    .then(function(dbComment) {
+    .then(function (dbComment) {
       return db.Article.findOneAndUpdate({ _id: req.params.id }, { comment: dbComment._id }, { new: true });
     })
-    .then(function(dbArticle) {
+    .then(function (dbArticle) {
       res.json(dbArticle);
     })
-    .catch(function(err) {
+    .catch(function (err) {
       res.json(err);
     });
 });
-app.listen(PORT, function() {
+app.listen(PORT, function () {
   console.log("App running on port localhost:" + PORT + " !");
 });
